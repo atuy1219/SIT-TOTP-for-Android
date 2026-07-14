@@ -20,13 +20,9 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".OtpDisplayActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.SitTotp.TileProxy" />
+        <receiver
+            android:name=".CopyOtpReceiver"
+            android:exported="false" />
 
         <service
             android:name=".TotpTileService"
