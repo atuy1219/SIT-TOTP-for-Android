@@ -25,7 +25,8 @@
             android:excludeFromRecents="true"
             android:exported="false"
             android:noHistory="true"
-            android:theme="@style/Theme.SitTotp.Transparent" />
+            android:taskAffinity=""
+            android:theme="@style/Theme.SitTotp.NoDisplay" />
 
         <service
             android:name=".TotpTileService"
