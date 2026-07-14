@@ -6,25 +6,28 @@ import android.os.Bundle;
 import android.widget.Toast;
 
 public final class OtpDisplayActivity extends Activity {
-    public static final String EXTRA_FROM_TILE = "from_tile";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         overridePendingTransition(0, 0);
 
         try {
-            String seed = new SeedStore(this).read();
+            SeedStore store = new SeedStore(this);
+            String seed = store.read();
             if (seed == null) {
                 startActivity(new Intent(this, MainActivity.class));
+            } else if (OtpNotificationService.isActive(this)) {
+                OtpNotificationService.stopAndRemove(this);
             } else {
+                OtpNotificationService.markStarting(this);
                 Intent serviceIntent = new Intent(this, OtpNotificationService.class);
                 startForegroundService(serviceIntent);
             }
         } catch (Exception exception) {
+            OtpNotificationService.clearActiveState(this);
             Toast.makeText(
                     this,
-                    "TOTPを表示できません: " + safeMessage(exception),
+                    "TOTPを切り替えられません: " + safeMessage(exception),
                     Toast.LENGTH_LONG
             ).show();
         } finally {
