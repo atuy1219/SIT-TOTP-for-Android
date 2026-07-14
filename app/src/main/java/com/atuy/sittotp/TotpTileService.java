@@ -2,11 +2,18 @@ package com.atuy.sittotp;
 
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 import android.widget.Toast;
 
 public final class TotpTileService extends TileService {
+    private static final long TILE_PULSE_MILLIS = 350L;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable resetTileRunnable = this::updateTile;
+
     @Override
     public void onStartListening() {
         super.onStartListening();
@@ -14,20 +21,20 @@ public final class TotpTileService extends TileService {
     }
 
     @Override
-    public void onClick() {
-        super.onClick();
-        toggleNotification();
+    public void onStopListening() {
+        handler.removeCallbacks(resetTileRunnable);
+        super.onStopListening();
     }
 
-    private void toggleNotification() {
+    @Override
+    public void onClick() {
+        super.onClick();
+        copyAndShowNotification();
+    }
+
+    private void copyAndShowNotification() {
         SeedStore store = new SeedStore(this);
         if (!store.hasSeed()) {
-            updateTile();
-            return;
-        }
-
-        if (OtpNotificationService.isActive(this)) {
-            OtpNotificationService.stopAndRemove(this);
             updateTile();
             return;
         }
@@ -42,18 +49,33 @@ public final class TotpTileService extends TileService {
             String code = Totp.generate(seed, System.currentTimeMillis() / 1_000L);
             ClipboardUtils.copySensitiveText(this, code);
 
+            pulseTile();
             OtpNotificationService.markStarting(this);
             startForegroundService(new Intent(this, OtpNotificationService.class));
         } catch (Exception exception) {
             OtpNotificationService.clearActiveState(this);
+            updateTile();
             Toast.makeText(
                     this,
                     "TOTPを表示できません: " + safeMessage(exception),
                     Toast.LENGTH_LONG
             ).show();
         }
+    }
 
-        updateTile();
+    private void pulseTile() {
+        Tile tile = getQsTile();
+        if (tile == null) {
+            return;
+        }
+
+        handler.removeCallbacks(resetTileRunnable);
+        tile.setState(Tile.STATE_ACTIVE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            tile.setSubtitle("コピーしました");
+        }
+        tile.updateTile();
+        handler.postDelayed(resetTileRunnable, TILE_PULSE_MILLIS);
     }
 
     private void updateTile() {
@@ -63,17 +85,9 @@ public final class TotpTileService extends TileService {
         }
 
         boolean configured = new SeedStore(this).hasSeed();
-        boolean displaying = configured && OtpNotificationService.isActive(this);
-
-        tile.setState(displaying ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+        tile.setState(Tile.STATE_INACTIVE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (!configured) {
-                tile.setSubtitle("シード未設定");
-            } else if (displaying) {
-                tile.setSubtitle("タップして閉じる");
-            } else {
-                tile.setSubtitle("タップして表示・コピー");
-            }
+            tile.setSubtitle(configured ? "タップしてコピー" : "シード未設定");
         }
         tile.updateTile();
     }
