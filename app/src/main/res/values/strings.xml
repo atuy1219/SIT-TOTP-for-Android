@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SIT TOTP</string>
+    <string name="tile_label">SIT TOTP</string>
+    <string name="notification_channel_name">ワンタイムパスワード</string>
+    <string name="notification_channel_description">クイック設定タイルから生成したSITのTOTPを表示します</string>
+</resources>
