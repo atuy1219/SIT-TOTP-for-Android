@@ -29,7 +29,7 @@ public final class OtpNotificationService extends Service {
     private static final String CHANNEL_ID = "sit_totp_code";
     private static final String STATE_PREFERENCES = "otp_notification_state";
     private static final String KEY_ACTIVE_UNTIL = "active_until";
-    private static final long DISPLAY_DURATION_MILLIS = 30_000L;
+    private static final long DISPLAY_DURATION_MILLIS = 10_000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable updateRunnable = this::updateNotification;
