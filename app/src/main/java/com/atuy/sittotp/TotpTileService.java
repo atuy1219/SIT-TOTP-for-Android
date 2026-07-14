@@ -33,7 +33,6 @@ public final class TotpTileService extends TileService {
             intent = new Intent(this, OtpDisplayActivity.class)
                     .addFlags(
                             Intent.FLAG_ACTIVITY_NEW_TASK
-                                    | Intent.FLAG_ACTIVITY_NO_ANIMATION
                                     | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
                                     | Intent.FLAG_ACTIVITY_NO_HISTORY
                     );
