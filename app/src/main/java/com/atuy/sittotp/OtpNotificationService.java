@@ -5,7 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.os.Build;
@@ -13,6 +16,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.service.quicksettings.TileService;
 
 import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
@@ -22,6 +26,8 @@ public final class OtpNotificationService extends Service {
     public static final int NOTIFICATION_ID = 1219;
 
     private static final String CHANNEL_ID = "sit_totp_code";
+    private static final String STATE_PREFERENCES = "otp_notification_state";
+    private static final String KEY_ACTIVE_UNTIL = "active_until";
     private static final long DISPLAY_DURATION_MILLIS = 30_000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -43,15 +49,21 @@ public final class OtpNotificationService extends Service {
         try {
             normalizedSeed = new SeedStore(this).read();
             if (normalizedSeed == null) {
+                clearActiveState(this);
+                requestTileRefresh(this);
                 stopSelf();
                 return START_NOT_STICKY;
             }
         } catch (GeneralSecurityException exception) {
+            clearActiveState(this);
+            requestTileRefresh(this);
             stopSelf();
             return START_NOT_STICKY;
         }
 
         stopAtElapsedRealtime = SystemClock.elapsedRealtime() + DISPLAY_DURATION_MILLIS;
+        setActiveUntil(this, System.currentTimeMillis() + DISPLAY_DURATION_MILLIS);
+
         Notification initial = buildNotification();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
@@ -63,6 +75,7 @@ public final class OtpNotificationService extends Service {
             startForeground(NOTIFICATION_ID, initial);
         }
 
+        requestTileRefresh(this);
         handler.removeCallbacks(updateRunnable);
         handler.postDelayed(updateRunnable, nextSecondDelay());
         return START_NOT_STICKY;
@@ -72,12 +85,60 @@ public final class OtpNotificationService extends Service {
     public void onDestroy() {
         handler.removeCallbacks(updateRunnable);
         stopForeground(STOP_FOREGROUND_REMOVE);
+        if (notificationManager != null) {
+            notificationManager.cancel(NOTIFICATION_ID);
+        }
+        clearActiveState(this);
+        requestTileRefresh(this);
         super.onDestroy();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
+    }
+
+    static boolean isActive(Context context) {
+        long activeUntil = statePreferences(context).getLong(KEY_ACTIVE_UNTIL, 0L);
+        if (activeUntil <= System.currentTimeMillis()) {
+            clearActiveState(context);
+            return false;
+        }
+        return true;
+    }
+
+    static void markStarting(Context context) {
+        setActiveUntil(context, System.currentTimeMillis() + DISPLAY_DURATION_MILLIS);
+        requestTileRefresh(context);
+    }
+
+    static void stopAndRemove(Context context) {
+        context.stopService(new Intent(context, OtpNotificationService.class));
+        NotificationManager manager = context.getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.cancel(NOTIFICATION_ID);
+        }
+        clearActiveState(context);
+        requestTileRefresh(context);
+    }
+
+    static void clearActiveState(Context context) {
+        statePreferences(context).edit().remove(KEY_ACTIVE_UNTIL).apply();
+    }
+
+    private static void setActiveUntil(Context context, long activeUntil) {
+        statePreferences(context).edit().putLong(KEY_ACTIVE_UNTIL, activeUntil).apply();
+    }
+
+    private static SharedPreferences statePreferences(Context context) {
+        return context.getSharedPreferences(STATE_PREFERENCES, Context.MODE_PRIVATE);
+    }
+
+    private static void requestTileRefresh(Context context) {
+        TileService.requestListeningState(
+                context,
+                new ComponentName(context, TotpTileService.class)
+        );
     }
 
     private void updateNotification() {
