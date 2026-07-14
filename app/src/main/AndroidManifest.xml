@@ -26,7 +26,7 @@
             android:exported="false"
             android:noHistory="true"
             android:taskAffinity=""
-            android:theme="@style/Theme.SitTotp.NoDisplay" />
+            android:theme="@style/Theme.SitTotp.TileProxy" />
 
         <service
             android:name=".TotpTileService"
