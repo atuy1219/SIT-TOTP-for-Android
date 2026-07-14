@@ -19,12 +19,6 @@ TOTP方式は参照元の `SIT-TOTP-AutoFill` と同じ次の設定です。
 - 6桁
 - 30秒周期
 
-## OnePlus / OPPO Live Alerts
-
-Android 16では `Notification.ProgressStyle`、短い重要テキスト、promoted ongoing要求を使用します。ColorOS / OxygenOSがこの通知をLive Alertsとして扱う場合は、ステータス領域にもコードが表示されます。
-
-ただし、Live Alertsへの昇格判断はOS・端末・通知設定に依存します。昇格されない場合も通常の通知としてコードを表示します。
-
 ## セキュリティ
 
 - シードはAndroid Keystoreの非エクスポート可能なAES鍵を使い、AES-GCMで暗号化して保存します。
