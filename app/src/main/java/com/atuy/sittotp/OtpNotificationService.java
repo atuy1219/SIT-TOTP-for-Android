@@ -25,6 +25,7 @@ import java.util.Collections;
 public final class OtpNotificationService extends Service {
     public static final int NOTIFICATION_ID = 1219;
 
+    private static final int COPY_REQUEST_CODE = 1220;
     private static final String CHANNEL_ID = "sit_totp_code";
     private static final String STATE_PREFERENCES = "otp_notification_state";
     private static final String KEY_ACTIVE_UNTIL = "active_until";
@@ -151,26 +152,41 @@ public final class OtpNotificationService extends Service {
     }
 
     private Notification buildNotification() {
-        long epochSeconds = System.currentTimeMillis() / 1000L;
+        long epochSeconds = System.currentTimeMillis() / 1_000L;
         String code = Totp.generate(normalizedSeed, epochSeconds);
         int remaining = Totp.remainingSeconds(epochSeconds);
         int elapsed = Totp.PERIOD_SECONDS - remaining;
 
         Intent contentIntent = new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
+        PendingIntent contentPendingIntent = PendingIntent.getActivity(
                 this,
                 0,
                 contentIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
+        Intent copyIntent = new Intent(this, CopyOtpReceiver.class)
+                .setAction(CopyOtpReceiver.ACTION_COPY_CURRENT_CODE);
+        PendingIntent copyPendingIntent = PendingIntent.getBroadcast(
+                this,
+                COPY_REQUEST_CODE,
+                copyIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        Notification.Action copyAction = new Notification.Action.Builder(
+                Icon.createWithResource(this, R.drawable.ic_copy),
+                getString(R.string.copy_code),
+                copyPendingIntent
+        ).build();
+
         Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_totp)
                 .setContentTitle(code)
                 .setContentText("SITワンタイムパスワード・残り " + remaining + " 秒")
                 .setSubText("SIT TOTP")
-                .setContentIntent(pendingIntent)
+                .setContentIntent(contentPendingIntent)
+                .addAction(copyAction)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setLocalOnly(true)
