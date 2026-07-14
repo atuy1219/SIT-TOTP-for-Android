@@ -8,5 +8,19 @@
         <item name="android:colorAccent">#0057B8</item>
     </style>
 
-    <style name="Theme.SitTotp.NoDisplay" parent="@android:style/Theme.NoDisplay" />
+    <style name="Animation.SitTotp.TileProxy">
+        <item name="android:activityOpenEnterAnimation">@anim/tile_hold</item>
+        <item name="android:activityOpenExitAnimation">@anim/tile_hold</item>
+        <item name="android:activityCloseEnterAnimation">@anim/tile_return_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/tile_return_exit</item>
+    </style>
+
+    <style name="Theme.SitTotp.TileProxy" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@style/Animation.SitTotp.TileProxy</item>
+    </style>
 </resources>
