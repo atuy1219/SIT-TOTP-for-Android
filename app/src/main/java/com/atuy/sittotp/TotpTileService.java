@@ -1,10 +1,10 @@
 package com.atuy.sittotp;
 
-import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Build;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
+import android.widget.Toast;
 
 public final class TotpTileService extends TileService {
     @Override
@@ -16,44 +16,44 @@ public final class TotpTileService extends TileService {
     @Override
     public void onClick() {
         super.onClick();
-        Runnable action = this::launchAndCollapse;
-        if (isLocked()) {
-            unlockAndRun(action);
-        } else {
-            action.run();
-        }
+        toggleNotification();
     }
 
-    private void launchAndCollapse() {
-        boolean configured = new SeedStore(this).hasSeed();
-        Intent intent;
-        int requestCode;
-
-        if (configured) {
-            intent = new Intent(this, OtpDisplayActivity.class)
-                    .addFlags(
-                            Intent.FLAG_ACTIVITY_NEW_TASK
-                                    | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-                                    | Intent.FLAG_ACTIVITY_NO_HISTORY
-                    );
-            requestCode = 1;
-        } else {
-            intent = new Intent(this, MainActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            requestCode = 2;
+    private void toggleNotification() {
+        SeedStore store = new SeedStore(this);
+        if (!store.hasSeed()) {
+            updateTile();
+            return;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            PendingIntent pendingIntent = PendingIntent.getActivity(
+        if (OtpNotificationService.isActive(this)) {
+            OtpNotificationService.stopAndRemove(this);
+            updateTile();
+            return;
+        }
+
+        try {
+            String seed = store.read();
+            if (seed == null) {
+                updateTile();
+                return;
+            }
+
+            String code = Totp.generate(seed, System.currentTimeMillis() / 1_000L);
+            ClipboardUtils.copySensitiveText(this, code);
+
+            OtpNotificationService.markStarting(this);
+            startForegroundService(new Intent(this, OtpNotificationService.class));
+        } catch (Exception exception) {
+            OtpNotificationService.clearActiveState(this);
+            Toast.makeText(
                     this,
-                    requestCode,
-                    intent,
-                    PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
-            startActivityAndCollapse(pendingIntent);
-        } else {
-            startActivityAndCollapse(intent);
+                    "TOTPを表示できません: " + safeMessage(exception),
+                    Toast.LENGTH_LONG
+            ).show();
         }
+
+        updateTile();
     }
 
     private void updateTile() {
@@ -72,9 +72,16 @@ public final class TotpTileService extends TileService {
             } else if (displaying) {
                 tile.setSubtitle("タップして閉じる");
             } else {
-                tile.setSubtitle("タップして表示");
+                tile.setSubtitle("タップして表示・コピー");
             }
         }
         tile.updateTile();
+    }
+
+    private static String safeMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message == null || message.trim().isEmpty()
+                ? exception.getClass().getSimpleName()
+                : message;
     }
 }
