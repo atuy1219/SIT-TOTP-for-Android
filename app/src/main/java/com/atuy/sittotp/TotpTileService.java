@@ -25,20 +25,31 @@ public final class TotpTileService extends TileService {
     }
 
     private void launchAndCollapse() {
-        SeedStore store = new SeedStore(this);
-        Intent intent = new Intent(
-                this,
-                store.hasSeed() ? OtpDisplayActivity.class : MainActivity.class
-        )
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(OtpDisplayActivity.EXTRA_FROM_TILE, true);
+        boolean configured = new SeedStore(this).hasSeed();
+        Intent intent;
+        int requestCode;
+
+        if (configured) {
+            intent = new Intent(this, OtpDisplayActivity.class)
+                    .addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK
+                                    | Intent.FLAG_ACTIVITY_NO_ANIMATION
+                                    | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+                                    | Intent.FLAG_ACTIVITY_NO_HISTORY
+                    );
+            requestCode = 1;
+        } else {
+            intent = new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            requestCode = 2;
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             PendingIntent pendingIntent = PendingIntent.getActivity(
                     this,
-                    0,
+                    requestCode,
                     intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                    PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );
             startActivityAndCollapse(pendingIntent);
         } else {
@@ -53,9 +64,17 @@ public final class TotpTileService extends TileService {
         }
 
         boolean configured = new SeedStore(this).hasSeed();
-        tile.setState(configured ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
+        boolean displaying = configured && OtpNotificationService.isActive(this);
+
+        tile.setState(displaying ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            tile.setSubtitle(configured ? "コードを表示" : "シード未設定");
+            if (!configured) {
+                tile.setSubtitle("シード未設定");
+            } else if (displaying) {
+                tile.setSubtitle("タップして閉じる");
+            } else {
+                tile.setSubtitle("タップして表示");
+            }
         }
         tile.updateTile();
     }
