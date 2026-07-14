@@ -8,7 +8,7 @@
         <item name="android:colorAccent">#0057B8</item>
     </style>
 
-    <style name="Animation.SitTotp.TileProxy">
+    <style name="AnimationSitTotpTileProxy">
         <item name="android:activityOpenEnterAnimation">@anim/tile_hold</item>
         <item name="android:activityOpenExitAnimation">@anim/tile_hold</item>
         <item name="android:activityCloseEnterAnimation">@anim/tile_return_enter</item>
@@ -21,6 +21,6 @@
         <item name="android:windowIsFloating">false</item>
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowDisablePreview">true</item>
-        <item name="android:windowAnimationStyle">@style/Animation.SitTotp.TileProxy</item>
+        <item name="android:windowAnimationStyle">@style/AnimationSitTotpTileProxy</item>
     </style>
 </resources>
